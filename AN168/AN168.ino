@@ -1,8 +1,8 @@
 /*
+ * 
  * Chad Baily
  * CO2 Meter, Inc.
- * AN168_1_second
- * 3/10/2017
+ * AN168
  * 
  */
  
@@ -50,7 +50,14 @@ byte response[] = {0, 0, 0, 0, 0, 0, 0}; //create an array to store the 7 byte r
 int valMultiplier = 1; //For 1% sensor P/N SE-119 marked 004-0-0013
 //int valMultiplier = 5;   //For 5% sensor P/N SE-037 marked 004-0-0017
 
+
+byte myserver[] = {192, 168, 1 , 3}; //ip address of the host server
+String ipAddress = "192.168.1.3";
+
+
 WiFiServer server(80);
+WiFiClient client;
+unsigned long valCO2;
 
 void setup()
 {
@@ -149,9 +156,10 @@ void loop()
 
 void sta_loop()
 {
-  delay(1000);
+  delay(10000);
   sendRequest(readCO2);
-  unsigned long valCO2 = getValue(response);
+  valCO2 = getValue(response);
+  sendGET();
   Serial.print("Co2 ppm = ");
   Serial.println(valCO2);
   //Wifi Server Side
@@ -180,7 +188,7 @@ void sta_loop()
             client.println("<script src=\"https://ajax.googleapis.com/ajax/libs/jquery/1.3.0/jquery.min.js\"></script>");
             client.println("</head><body align=center>");
             client.println("<h1 align=center><font color=\"red\">S8 CO2 Sensor</font></h1>");
-            client.print("<h2 id = \"co2\" align=center><font color=\"red\">");
+            client.print("<h2 id = \"co2\" align=center><font color=d\"red\">");
             client.print(valCO2);
             client.println("</font></h2>");
             client.println("<span></span>");
@@ -202,6 +210,25 @@ void sta_loop()
     }
     // close the connection:
     client.stop();
+  }
+}
+
+void sendGET() //client function to send/receive GET request data.
+{
+  if (client.connect(myserver, 80)) {  //starts client connection, checks for connection
+    Serial.println("connected");
+    client.print("GET http://");
+    client.print(ipAddress);
+    client.print("/index.php?co2=");
+    client.print(valCO2);
+    client.println("HTTP/1.0"); //download text
+    client.println(); //end of get request
+    client.stop(); //stop client
+
+  } 
+  else {
+    Serial.println("connection failed"); //error message if no client connect
+    Serial.println();
   }
 }
 
@@ -238,6 +265,40 @@ unsigned long getValue(byte packet[])
   unsigned long val = high * 256 + low; //Combine high byte and low byte with this formula to get value
   return val * valMultiplier;
 }
+
+//Sending Data to the server
+//void post()
+//{
+//  Serial.println("connecting...");
+//  String PostData="sample={\"fittingId\":1,";
+//  unsigned char i;
+//  for(i=0;i<6;i++)
+//  {
+//    PostData=PostData+"\"channel-";
+//    PostData=String(PostData+i);
+//    PostData=PostData+"\":";
+//    PostData=String(PostData + String(analogRead(i)));
+//    if(i!=5)
+//      PostData=PostData+",";
+//  }
+//    PostData=PostData+"}";  
+//  Serial.println(PostData);
+//  if (client.connect()) {
+//    Serial.println("connected");
+//  client.println("POST /tinyFittings/index.php HTTP/1.1");
+//  client.println("Host:  artiswrong.com");
+//  client.println("User-Agent: Arduino/1.0");
+//  client.println("Connection: close");
+//  client.println("Content-Type: application/x-www-form-urlencoded;");
+//  client.print("Content-Length: ");
+//  client.println(PostData.length());
+//  client.println();
+//  client.println(PostData);
+//  } else {
+//    Serial.println("connection failed");
+//  }
+//}
+
 
 void ap_loop()
 { Udp.begin(Port);
